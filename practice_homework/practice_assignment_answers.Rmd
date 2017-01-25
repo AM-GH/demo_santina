@@ -1,0 +1,165 @@
+---
+title: "Practice assignment reference"
+author: "Santina Lin"
+date: "January 24, 2017"
+output: github_document
+---
+This is an answer key that was hastly written up prior to grading the assignment. By no mean it's perfect. Please look at the raw Rmd to get an idea of the use of inline R code, R chunk options, etc. 
+
+Usually at the beginning of a R markdown, you load some R packages that you need in an R chunk, and use R chunk options to hide any messages/output from loading these packages. 
+
+```{r packages, message=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+
+# Question 1 - README 
+
+My README is at the root of this repository. There you can see a brief description about myself. 
+
+# Question 2 - Titanic dataset 
+
+In this question, we are exploring the `Titanic` dataset in base R to get some hand-on experience on how to do some basic data inspection with R. 
+
+## Question 2.1 - People 
+
+First I will convert the table `Titanic` into a daat.frame so that I can easily inspect the data with some commonly used functions in R. 
+
+```{r read_titanic}
+titanic_data <- data.frame(Titanic)
+str(titanic_data)
+```
+There we can see that thereare `r nrow(titanic_data)` combinations of different factors. 
+
+I want to know how many children and adults are in Titanic. 
+```{r child_adults}
+# Using the parentheses to print the output while assigning it to a variable
+# Type ?aggregate to see how to use the function. 
+(age <- aggregate(Freq~Age, data=titanic_data, sum)) 
+```
+As we can see from the output of the above R chunk, there are `r age[[2]][1]` children and `r age[[2]][2]` adults. 
+
+I also want to know whether there are more female adults or male adults. 
+
+```{r female_male_adults}
+adult <- titanic_data[titanic_data$Age == "Adult", ]
+(gender <- aggregate(Freq~Sex, data=adult, sum))
+```
+
+We can see that there were more men than women onboard. 
+
+
+## Question 2.2 - Survival 
+
+### Did children or adults have better survival rate. 
+
+I'm curious to see what are the surival rate in different group of people. 
+
+First, did the children have better surival rate than the adults? First I'll use the same old trick again to show you the overall survival. 
+
+```{r survival_summary_age}
+(suvival_summary <- aggregate(Freq~Survived+Age, data=titanic_data, sum))
+```
+By eyeballing at the numbers, we already know the answer. But just to be more complete with our analysis, let's get the actual survival rate. 
+
+Because this question asks a lot about survival rate and I got tired of calculating them individually, so we'll write a function to do this. This function will simply give you a list of surival rate for different factors of the same column. 
+
+```{r survival_rate_function}
+get_survival_rate <- function(dat, classification){
+  total_people <- aggregate(Freq~classification, data=dat, sum)
+}
+```
+
+There are many ways to do this, like just getting the number out from the previous table. I'm showing you another way (you can probably come up with something better). 
+```{r survival_rate}
+# Get the people who survived 
+survived <- subset(suvival_summary, Survived=="Yes")
+
+# Get the total number of adults and those that survived 
+total_adult <- sum(adult$Freq)  # sum over the frequency of the dataset we created before 
+total_adult_lived <- survived[survived$Age=="Adult", ]$Freq
+
+# Get the total number of children and those that survived 
+total_child <- sum( titanic_data[titanic_data$Age == "Child", ]$Freq )
+total_child_lived <- survived[survived$Age=="Child", ]$Freq
+
+# Print out the surival rate 
+(adult_rate <- total_adult_lived/total_adult)
+(child_rate <- total_child_lived/total_child)
+```
+
+Adult had a `r adult_rate` survival rate, and children had a `r child_rate` survival rate. 
+
+### Which class of passengers had the highest survival rate?  
+
+Okay, I'm going to show you something much quicker, written by my dear friend Celia. 
+
+Pipe `%>%` is something that allow you to "pipe" the input from the previous thing, into the next command. Go search it online and learn about it. It'll make your R code look nicer. 
+
+Now I want to find the surival rate of different class of passengers. Here's my one command (separate into multiple lines for readability) 
+
+```{r}
+titanic_data %>% 
+  group_by(Class, Survived) %>% 
+  summarize(Total = sum(Freq)) %>%
+  tidyr::spread(Survived, Total) %>% 
+  mutate(rate = Yes/(Yes + No))
+```
+
+What just happened there? First, I'm grouping my data by the Class factors and the Survived factors. I then pipe the result into the summarize function, which tally the frequency for the "groups" I created earlier. 
+
+Let's look at what we have by now
+
+```{r}
+titanic_data %>% group_by(Class, Survived) %>% summarize(Total = sum(Freq))
+
+```
+
+The next step is `spread`, which "spread a key-value pair across multiple columns."
+
+```{r}
+titanic_data %>% group_by(Class, Survived) %>% summarize(Total = sum(Freq)) %>% tidyr::spread(Survived, Total)
+
+```
+`mutate` is a function that's really useful for doing some operation with some columns. Remember this function next time if you ever ask yourself questions like "How do I divide all these number in this column by those number in another column, and store the result in the third column?"
+
+Enough lecturing. :P 
+
+# Question 3. Data Visualization 
+
+This question is just to get you familiar with reading in data and graphing. 
+
+First I read in the data as a data.frame. Because this data has header, I make sure I set the option to True. 
+
+```{r pig_data}
+pig_data <- read.table("guinea_pigs_tooth_growth.txt", header=TRUE)
+str(pig_data)
+head(pig_data)
+```
+
+Reading the description about the the dataset, I know that it's a data set that infers tooth growth by measuring the length of odontoblasts in guinea pigs that were given different dosages of vitamin C. There are also two forms of delivery, either in the form of orange juice or ascorbic acid. 
+
+I'm interested to see whether the difference in delivery make any difference, and if the dosage has any effect on the tooth growth. 
+
+```{r}
+ggplot(pig_data, aes(x=dose, y=len, color=supp)) + geom_point() 
+```
+
+I don't like this graph. Let me further improve it by making the dosage as factors. 
+
+```{r}
+pig_data$dose <- factor(pig_data$dose)
+ggplot(pig_data, aes(x=dose, y=len, color=supp)) + geom_boxplot() + theme_bw()
+```
+
+I am using boxplots so I can easily see the means and range in each group. It seems like regardless of delivery method, there's a general upward trend for increasing tooth growth and increasing dosage. 
+
+I can add title, x and y axis labels to the graph as well. 
+
+# Session info
+
+Printing out session info so that people can know what version of R and packages I'm using in case they ever need to run my Rmarkdown. 
+
+```{r}
+sessionInfo()
+```
