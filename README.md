@@ -1,5 +1,5 @@
 # About me
-Hi I'm Santina. You can find me on Twitter, LinkedIn, and GitHub. 
+Hi I'm Santina. You can find me on [LinkedIn](https://ca.linkedin.com/in/santinalin). 
 
 # What do I do 
 

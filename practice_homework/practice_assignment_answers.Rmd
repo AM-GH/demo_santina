@@ -62,14 +62,6 @@ First, did the children have better surival rate than the adults? First I'll use
 ```
 By eyeballing at the numbers, we already know the answer. But just to be more complete with our analysis, let's get the actual survival rate. 
 
-Because this question asks a lot about survival rate and I got tired of calculating them individually, so we'll write a function to do this. This function will simply give you a list of surival rate for different factors of the same column. 
-
-```{r survival_rate_function}
-get_survival_rate <- function(dat, classification){
-  total_people <- aggregate(Freq~classification, data=dat, sum)
-}
-```
-
 There are many ways to do this, like just getting the number out from the previous table. I'm showing you another way (you can probably come up with something better). 
 ```{r survival_rate}
 # Get the people who survived 
