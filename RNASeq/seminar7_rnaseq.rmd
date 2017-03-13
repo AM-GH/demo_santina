@@ -1,0 +1,35 @@
+---
+title: "RNA seq analysis practice"
+author: "Santina Lin"
+date: "March 12, 2017"
+output: 
+  github_document:
+    toc: true
+---
+
+## Setup 
+
+Here we are using various packages to do RNAseq analysis.
+
+```{r}
+#source("http://bioconductor.org/biocLite.R")
+#biocLite("edgeR")
+library(ggplot2)
+library(limma)
+library(edgeR)
+#edgeRUsersGuide() # Read the reference manual
+library(DESeq)
+library(voom)
+
+```
+
+## Read data 
+
+```{r}
+# Both have headers and rownames. Without row.names the column would just be called "gene"
+data <- read.table("https://raw.githubusercontent.com/STAT540-UBC/STAT540-UBC.github.io/master/examples/bottomly/data/bottomly_count_table.tsv", header=TRUE, row.names=1)
+des <- read.table("https://raw.githubusercontent.com/STAT540-UBC/STAT540-UBC.github.io/master/examples/bottomly/data/bottomly_phenodata.tsv", header=TRUE, row.names=1) 
+```
+
+## EdgeR 
+
