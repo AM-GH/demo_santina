@@ -11,19 +11,19 @@ output:
 
 Here we are using various packages to do RNAseq analysis.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 #source("http://bioconductor.org/biocLite.R")
 #biocLite("edgeR")
 library(ggplot2)
-library(limma)
+library(limma) # required by edgeR
 library(edgeR)
-#edgeRUsersGuide() # Read the reference manual
+#edgeRUsersGuide() # Read the reference manual up to p25. 
 library(DESeq)
-library(voom)
-
 ```
 
 ## Read data 
+
+The data comes from [this publication](https://www.ncbi.nlm.nih.gov/pubmed?term=21455293). It's RNAseq from mice.
 
 ```{r}
 # Both have headers and rownames. Without row.names the column would just be called "gene"
@@ -33,3 +33,133 @@ des <- read.table("https://raw.githubusercontent.com/STAT540-UBC/STAT540-UBC.git
 
 ## EdgeR 
 
+Much of the analysis here is based on the manual. Please read them for more details.
+
+### DGEList data class
+First inspect the data
+```{r}
+table(des$strain)
+head(data)
+```
+
+We can see that the count data has many zeros. 
+To use edgeR, we need to store in a simple list-based object called DGEList, because many functions after that takes this kind of object. We can add a grouping factor at the same time. 
+
+```{r}
+(group <- factor(c(rep("1",10),rep("2",11)))) 
+dge.obj <- DGEList(counts=data, group=group)
+names(dge.obj) # a list consists of two things 
+```
+
+The object "samples" summarizes the information in the count data. 
+```{r}
+head(dge.obj$samples)
+```
+
+What's the smallest lib.size? 
+```{r}
+min(dge.obj$samples$lib.size)
+```
+
+The smallest lib size is about 2.7 millions. 
+
+### Filtering 
+
+"In a biological point of view, a gene must be expressed at some minimal level before it's likely to be translated." We will exclude genes with very low count so that they don't interfere with our later statistical analysis. 
+
+According to the manual, we would drop off the genes that aren't present in at least one sample for any of the conditions and filter with CPM (count-per-million) instead of the rare counts so that we're taking the library sizes into account. 
+
+```{r}
+dge.obj.cpm <- cpm(dge.obj, log=TRUE) # count per million. Not sure if I need to do log=TRUE to log transform (base 2) here. 
+# sanity check using unsupervised clustering
+plotMDS(dge.obj.cpm,  col=c(rep("black",10), rep("red",11)) ) 
+
+# Filtering 
+threshold <- log2(5*2.7)
+keep <- rowSums(dge.obj.cpm > threshold) # filter for log cpm > 3.3
+keep <- keep >=10  # filter for gene expressed in at least 10 samples for one condition
+dge.obj.filtered <- dge.obj[keep, , keep.lib.sizes=FALSE] # keep.lib.sizes recalculates the library size. 
+head(dge.obj.filtered$samples)
+```
+We can see that the lib.size are smaller compare to those in `dge.obj` after we dropped out some genes. 
+
+Manual said "a gene is required to have a count of 5-10" in a library to be considered expressed in that library, so that's why I filter it by log2(5*2.7); our smallest library size is 2.7 million.
+
+Let's see how many genes we have left. 
+```{r}
+dim(dge.obj); dim(dge.obj.filtered);
+```
+
+We have `r nrow(dge.obj.filtered)` genes left.
+
+### Normalization
+
+edgeR will automatically adjust differential expression analysis for different sequencing depth as represented by the library sizes. We don't need to normalize for sequencing depth. 
+
+RNA composition: some small number of genes are highly expression in one sample, but not in another. These genes can consume a big proportion of the library size and making other genes to look under-sampled or lowly expressed. So we need to adjust for this using `calcNormFactors`. This function minimizes the log fold change (lfc) between samples for most genes using a scaling factors computed using TMM (trimmed mean of M-values). I still need to Google what that is. The manual says you use TMM if you think most of your genes are not differentially expressed between any pair of the samples. 
+
+```{r}
+dge.obj.filtered.norm <- calcNormFactors(dge.obj.filtered)
+head(dge.obj.filtered.norm$sample)
+```
+
+Now the norm factors are no longer 1 like in `dge.obj.filtered`. norm.factors < 1 tell us that there are a small number of genes that make up a substantial proportion of counts. In this case, the library size will be scaled down so to scale the counts of the other genes upward. 
+
+### Dispersion 
+
+The manual presented two options: using the classical linera model or use generalized linear models (GLM). We'll use the latter here. 
+
+```{r}
+# make a design matrix
+design <- model.matrix(~group)
+
+# Estimate trend-wise (all tag) dispersion and then tag-wise (one tag) dispersion in one go. 
+dge.obj.filtered.norm.disp <- estimateDisp(dge.obj.filtered.norm, design)
+plotBCV(dge.obj.filtered.norm.disp)
+names(dge.obj.filtered.norm.disp)
+```
+
+### Find differentially expressed genes 
+
+Fit the negative binomial GLM for each tag. 
+```{r}
+fit <- glmFit(dge.obj.filtered.norm.disp, design)
+names(fit)
+```
+
+```{r}
+lrt <- glmLRT(fit,coef=2)
+DEGenes <- topTags(lrt, n=Inf) # get the top expressed genes
+names(DEGenes)
+DEGenes$test; DEGenes$comparison; DEGenes$adjust.method
+head(DEGenes$table)
+```
+
+
+We can also use `glmQLFit()` and `glmQLFTest()` instead if our sample size is small. 
+
+Up to this point, we can also filter by the logFC if we're only interested in up-regulation, down-regulation, or certain absolute log fold change. 
+
+The p values for the first few are crazy small. Let's see how many have p value < 0.001
+```{r}
+sum(DEGenes$table$PValue <= 0.001 )
+```
+
+### Gene ontology and pathway analysis 
+
+First let's look at only the top genes that have p value < 0.001
+
+```{r}
+top <- DEGenes[DEGenes$table$PValue <= 0.001 , ]
+```
+
+```{r}
+# make sure you have installed "GO.db" package: biocLite("GO.db")
+# Also need `biocLite("org.Mm.eg.db")` for data on mice
+keg <- kegga(rownames(top$table), species="Mm")  # manual has a mistake, need to use rownames
+gene.enrich <- topKEGG(keg)
+head(gene.enrich)
+nrow(gene.enrich)
+```
+
+There are `r nrow(gene.enrich)` different functions. 
