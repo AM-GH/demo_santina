@@ -253,3 +253,16 @@ DESeq2::plotMA(result, main="DESeq2", ylim=c(-3,3))
 
 In red are those with adjusted p value less than 0.1. 
 
+
+## Voom and limma
+
+Very similar to limma, with lmFit, eBayes, and topTable.
+
+```{r}
+norm.factor <- calcNormFactors(data)
+design <- model.matrix(~group)
+dat.voomed <- voom(data,design,plot=TRUE,lib.size=colSums(data)*norm.factor)
+fit <- lmFit(dat.voomed, design)
+fit <- eBayes(fit)
+topTable(fit, coef="group2", n=5)
+```

@@ -17,6 +17,7 @@ March 12, 2017
     -   [Sanity check on data](#sanity-check-on-data)
     -   [Differential expression analysis](#differential-expression-analysis)
     -   [Exploring result](#exploring-result)
+-   [Voom and limma](#voom-and-limma)
 
 Setup
 -----
@@ -486,3 +487,35 @@ DESeq2::plotMA(result, main="DESeq2", ylim=c(-3,3))
 ![](seminar7_rnaseq_files/figure-markdown_github/unnamed-chunk-23-1.png)
 
 In red are those with adjusted p value less than 0.1.
+
+Voom and limma
+--------------
+
+Very similar to limma, with lmFit, eBayes, and topTable.
+
+``` r
+norm.factor <- calcNormFactors(data)
+design <- model.matrix(~group)
+dat.voomed <- voom(data,design,plot=TRUE,lib.size=colSums(data)*norm.factor)
+```
+
+![](seminar7_rnaseq_files/figure-markdown_github/unnamed-chunk-24-1.png)
+
+``` r
+fit <- lmFit(dat.voomed, design)
+fit <- eBayes(fit)
+topTable(fit, coef="group2", n=5)
+```
+
+    ##                        logFC    AveExpr         t      P.Value
+    ## ENSMUSG00000015484 -1.994877  3.9634712 -20.49015 6.099197e-18
+    ## ENSMUSG00000027855  5.342830 -0.3131727  22.23386 7.634327e-19
+    ## ENSMUSG00000030532  1.538774  5.3545041  19.71027 1.626166e-17
+    ## ENSMUSG00000023236  1.419650  6.8878509  19.36190 2.548026e-17
+    ## ENSMUSG00000054354 -5.824033 -0.2156264 -20.38549 6.943714e-18
+    ##                       adj.P.Val        B
+    ## ENSMUSG00000015484 8.456517e-14 30.79013
+    ## ENSMUSG00000027855 2.789278e-14 30.23763
+    ## ENSMUSG00000030532 1.485340e-13 30.03998
+    ## ENSMUSG00000023236 1.551578e-13 29.64388
+    ## ENSMUSG00000054354 8.456517e-14 28.84070
