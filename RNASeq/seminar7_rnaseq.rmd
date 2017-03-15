@@ -128,13 +128,13 @@ names(fit)
 ```
 
 ```{r}
-lrt <- glmLRT(fit,coef=2)
+lrt <- glmLRT(fit,coef="group2")
 DEGenes <- topTags(lrt, n=Inf) # get the top expressed genes
 names(DEGenes)
 DEGenes$test; DEGenes$comparison; DEGenes$adjust.method
 head(DEGenes$table)
+histogram(DEGenes$table$PValue) 
 ```
-
 
 We can also use `glmQLFit()` and `glmQLFTest()` instead if our sample size is small. 
 

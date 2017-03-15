@@ -246,7 +246,7 @@ names(fit)
     ## [13] "prior.df"              "AveLogCPM"
 
 ``` r
-lrt <- glmLRT(fit,coef=2)
+lrt <- glmLRT(fit,coef="group2")
 DEGenes <- topTags(lrt, n=Inf) # get the top expressed genes
 names(DEGenes)
 ```
@@ -274,6 +274,12 @@ head(DEGenes$table)
     ## ENSMUSG00000023236  1.400762 7.092576 282.3746 2.281013e-63 3.192278e-60
     ## ENSMUSG00000072572 -2.036295 3.739185 216.7730 4.573907e-49 5.120946e-46
     ## ENSMUSG00000028393  1.775881 6.135877 206.3210 8.720740e-47 8.136451e-44
+
+``` r
+histogram(DEGenes$table$PValue) 
+```
+
+![](seminar7_rnaseq_files/figure-markdown_github/unnamed-chunk-12-1.png)
 
 We can also use `glmQLFit()` and `glmQLFTest()` instead if our sample size is small.
 
