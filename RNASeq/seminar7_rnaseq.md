@@ -12,6 +12,7 @@ March 12, 2017
     -   [Dispersion](#dispersion)
     -   [Find differentially expressed genes](#find-differentially-expressed-genes)
     -   [Gene ontology and pathway analysis](#gene-ontology-and-pathway-analysis)
+-   [DESeq2](#deseq2)
 
 Setup
 -----
@@ -21,11 +22,11 @@ Here we are using various packages to do RNAseq analysis.
 ``` r
 #source("http://bioconductor.org/biocLite.R")
 #biocLite("edgeR")
-library(ggplot2)
 library(limma) # required by edgeR
 library(edgeR)
 #edgeRUsersGuide() # Read the reference manual up to p25. 
-library(DESeq)
+#biocLite("DESeq2")
+library(DESeq2)
 ```
 
 Read data
@@ -276,7 +277,7 @@ head(DEGenes$table)
     ## ENSMUSG00000028393  1.775881 6.135877 206.3210 8.720740e-47 8.136451e-44
 
 ``` r
-histogram(DEGenes$table$PValue) 
+lattice::histogram(DEGenes$table$PValue) 
 ```
 
 ![](seminar7_rnaseq_files/figure-markdown_github/unnamed-chunk-12-1.png)
@@ -299,12 +300,13 @@ First let's look at only the top genes that have p value &lt; 0.001
 
 ``` r
 top <- DEGenes[DEGenes$table$PValue <= 0.001 , ]
+edgeR.genes.names <- rownames(top$table)
 ```
 
 ``` r
 # make sure you have installed "GO.db" package: biocLite("GO.db")
 # Also need `biocLite("org.Mm.eg.db")` for data on mice
-keg <- kegga(rownames(top$table), species="Mm")  # manual has a mistake, need to use rownames
+keg <- kegga(edgeR.genes.names, species="Mm")  # manual has a mistake, need to use rownames
 gene.enrich <- topKEGG(keg)
 head(gene.enrich)
 ```
@@ -324,3 +326,94 @@ nrow(gene.enrich)
     ## [1] 20
 
 There are 20 different functions.
+
+DESeq2
+------
+
+User manual can be found [here](https://www.bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.pdf)
+
+DESeq2's workflow is a lot simplier. A lot of step (transformation, normalization) will be done internally. We just need to give the raw count data.
+
+Also, according to Paul, the underlying analyses of edgeR and DESeq2 are becoming closer and closer to each other.
+
+``` r
+dd <- DESeq2::DESeqDataSetFromMatrix(countData = data, colData = des, design = ~strain)
+dds <- DESeq2::DESeq(dd)
+```
+
+    ## estimating size factors
+
+    ## estimating dispersions
+
+    ## gene-wise dispersion estimates
+
+    ## mean-dispersion relationship
+
+    ## final dispersion estimates
+
+    ## fitting model and testing
+
+    ## -- replacing outliers and refitting for 11 genes
+    ## -- DESeq argument 'minReplicatesForReplace' = 7 
+    ## -- original counts are preserved in counts(dds)
+
+    ## estimating dispersions
+
+    ## fitting model and testing
+
+``` r
+result <- DESeq2::results(dds) 
+head(result) # note that it's not like toptag that it's ordered
+```
+
+    ## log2 fold change (MAP): strain DBA/2J vs C57BL/6J 
+    ## Wald test p-value: strain DBA/2J vs C57BL/6J 
+    ## DataFrame with 6 rows and 6 columns
+    ##                        baseMean log2FoldChange      lfcSE       stat
+    ##                       <numeric>      <numeric>  <numeric>  <numeric>
+    ## ENSMUSG00000000001 489.17565187    -0.10562888 0.09385420 -1.1254571
+    ## ENSMUSG00000000003   0.00000000             NA         NA         NA
+    ## ENSMUSG00000000028   1.56775318    -0.05694074 0.17681464 -0.3220363
+    ## ENSMUSG00000000031   0.00000000             NA         NA         NA
+    ## ENSMUSG00000000037   1.10104404     0.07638290 0.16262582  0.4696850
+    ## ENSMUSG00000000049   0.06870616    -0.01283400 0.05193818 -0.2471013
+    ##                       pvalue      padj
+    ##                    <numeric> <numeric>
+    ## ENSMUSG00000000001 0.2603954 0.5531512
+    ## ENSMUSG00000000003        NA        NA
+    ## ENSMUSG00000000028 0.7474252 0.8959461
+    ## ENSMUSG00000000031        NA        NA
+    ## ENSMUSG00000000037 0.6385801 0.8414511
+    ## ENSMUSG00000000049 0.8048298        NA
+
+``` r
+lattice::histogram(result$pvalue)
+```
+
+![](seminar7_rnaseq_files/figure-markdown_github/unnamed-chunk-17-1.png)
+
+How many genes have pvalue &lt; 0.001
+
+``` r
+result <- na.omit(result) # get rid of the rows with NA 
+top_deseq2 <- result[result$pvalue < 0.001, ]
+```
+
+Comparing DESeq2 and edgeR
+
+``` r
+deseq2.genes.names <- rownames(top_deseq2)
+length(edgeR.genes.names); length(deseq2.genes.names); 
+```
+
+    ## [1] 419
+
+    ## [1] 833
+
+``` r
+length(intersect(edgeR.genes.names, deseq2.genes.names))
+```
+
+    ## [1] 414
+
+We get more genes by doing DESEq2. There are many overlapping genes.
