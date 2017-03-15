@@ -13,6 +13,10 @@ March 12, 2017
     -   [Find differentially expressed genes](#find-differentially-expressed-genes)
     -   [Gene ontology and pathway analysis](#gene-ontology-and-pathway-analysis)
 -   [DESeq2](#deseq2)
+    -   [Load data](#load-data)
+    -   [Sanity check on data](#sanity-check-on-data)
+    -   [Differential expression analysis](#differential-expression-analysis)
+    -   [Exploring result](#exploring-result)
 
 Setup
 -----
@@ -22,11 +26,13 @@ Here we are using various packages to do RNAseq analysis.
 ``` r
 #source("http://bioconductor.org/biocLite.R")
 #biocLite("edgeR")
+library(dplyr)
 library(limma) # required by edgeR
 library(edgeR)
 #edgeRUsersGuide() # Read the reference manual up to p25. 
 #biocLite("DESeq2")
 library(DESeq2)
+library(viridis) # for getting color-blind friendly colors
 ```
 
 Read data
@@ -336,6 +342,8 @@ DESeq2's workflow is a lot simplier. A lot of step (transformation, normalizatio
 
 Also, according to Paul, the underlying analyses of edgeR and DESeq2 are becoming closer and closer to each other.
 
+### Load data
+
 ``` r
 dd <- DESeq2::DESeqDataSetFromMatrix(countData = data, colData = des, design = ~strain)
 dds <- DESeq2::DESeq(dd)
@@ -360,6 +368,57 @@ dds <- DESeq2::DESeq(dd)
     ## estimating dispersions
 
     ## fitting model and testing
+
+### Sanity check on data
+
+Let's do some quality assessment with the functions from DESeq2 do to sample clustering.
+
+**Heatmap of the count matrix**
+
+``` r
+library("pheatmap")
+```
+
+    ## Warning: package 'pheatmap' was built under R version 3.3.2
+
+``` r
+select <- order(rowMeans(counts(dds,normalized=TRUE)), 
+                decreasing=TRUE)[1:50] # order the count 
+
+nt <- DESeq2::normTransform(dds) # defaults to log2(x+1)
+
+log2.norm.counts <- assay(nt)[select,]
+labels <- dplyr::select(des, strain)
+pheatmap(log2.norm.counts, cluster_rows=FALSE, annotation_col = labels, annotation_legend = TRUE, show_rownames=FALSE)
+```
+
+![](seminar7_rnaseq_files/figure-markdown_github/unnamed-chunk-17-1.png)
+
+\*\* Heatmap of sample-to-sample distance \*\* Using all the genes
+
+``` r
+sample_dist <- cor(assay(nt)) 
+diag(sample_dist) <- NA # Getting rid of 1 to see the correlation better
+pheatmap(sample_dist, 
+         color = viridis(256, option = "D"),
+         cluster_rows=FALSE, 
+         cluster_cols = FALSE, 
+         annotation = labels, 
+         annotation_legend = TRUE)
+```
+
+![](seminar7_rnaseq_files/figure-markdown_github/unnamed-chunk-18-1.png)
+
+\*\* PCA \*\*
+
+``` r
+rld <- DESeq2::rlog(dds, blind=FALSE) # take the log of counts
+DESeq2::plotPCA(rld, intgroup = "strain")
+```
+
+![](seminar7_rnaseq_files/figure-markdown_github/unnamed-chunk-19-1.png)
+
+### Differential expression analysis
 
 ``` r
 result <- DESeq2::results(dds) 
@@ -390,7 +449,7 @@ head(result) # note that it's not like toptag that it's ordered
 lattice::histogram(result$pvalue)
 ```
 
-![](seminar7_rnaseq_files/figure-markdown_github/unnamed-chunk-17-1.png)
+![](seminar7_rnaseq_files/figure-markdown_github/unnamed-chunk-20-1.png)
 
 How many genes have pvalue &lt; 0.001
 
@@ -417,3 +476,13 @@ length(intersect(edgeR.genes.names, deseq2.genes.names))
     ## [1] 414
 
 We get more genes by doing DESEq2. There are many overlapping genes.
+
+### Exploring result
+
+``` r
+DESeq2::plotMA(result, main="DESeq2", ylim=c(-3,3))
+```
+
+![](seminar7_rnaseq_files/figure-markdown_github/unnamed-chunk-23-1.png)
+
+In red are those with adjusted p value less than 0.1.

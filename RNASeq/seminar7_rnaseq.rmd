@@ -14,11 +14,13 @@ Here we are using various packages to do RNAseq analysis.
 ```{r message=FALSE, warning=FALSE}
 #source("http://bioconductor.org/biocLite.R")
 #biocLite("edgeR")
+library(dplyr)
 library(limma) # required by edgeR
 library(edgeR)
 #edgeRUsersGuide() # Read the reference manual up to p25. 
 #biocLite("DESeq2")
 library(DESeq2)
+library(viridis) # for getting color-blind friendly colors
 ```
 
 ## Read data 
@@ -173,10 +175,52 @@ DESeq2's workflow is a lot simplier. A lot of step  (transformation, normalizati
 
 Also, according to Paul, the underlying analyses of edgeR and DESeq2 are becoming closer and closer to each other. 
 
+### Load data
 ```{r}
 dd <- DESeq2::DESeqDataSetFromMatrix(countData = data, colData = des, design = ~strain)
 dds <- DESeq2::DESeq(dd)
 ```
+
+### Sanity check on data 
+
+Let's do some quality assessment with the functions from DESeq2 do to sample clustering.
+
+**Heatmap of the count matrix** 
+```{r}
+library("pheatmap")
+select <- order(rowMeans(counts(dds,normalized=TRUE)), 
+                decreasing=TRUE)[1:50] # order the count 
+
+nt <- DESeq2::normTransform(dds) # defaults to log2(x+1)
+
+log2.norm.counts <- assay(nt)[select,]
+labels <- dplyr::select(des, strain)
+pheatmap(log2.norm.counts, cluster_rows=FALSE, annotation_col = labels, annotation_legend = TRUE, show_rownames=FALSE)
+
+```
+
+** Heatmap of sample-to-sample distance ** 
+Using all the genes
+```{r}
+sample_dist <- cor(assay(nt)) 
+diag(sample_dist) <- NA # Getting rid of 1 to see the correlation better
+pheatmap(sample_dist, 
+         color = viridis(256, option = "D"),
+         cluster_rows=FALSE, 
+         cluster_cols = FALSE, 
+         annotation = labels, 
+         annotation_legend = TRUE)
+```
+
+
+** PCA **
+```{r}
+rld <- DESeq2::rlog(dds, blind=FALSE) # take the log of counts
+DESeq2::plotPCA(rld, intgroup = "strain")
+```
+
+
+### Differential expression analysis
 
 ```{r}
 result <- DESeq2::results(dds) 
@@ -200,4 +244,12 @@ length(intersect(edgeR.genes.names, deseq2.genes.names))
 ```
 We get more genes by doing DESEq2. There are many overlapping genes. 
 
+### Exploring result 
+
+```{r}
+DESeq2::plotMA(result, main="DESeq2", ylim=c(-3,3))
+
+```
+
+In red are those with adjusted p value less than 0.1. 
 
