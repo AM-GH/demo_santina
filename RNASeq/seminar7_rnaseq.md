@@ -160,7 +160,7 @@ plotMDS(dge.obj.cpm,  col=c(rep("black",10), rep("red",11)) )
 
 ``` r
 # Filtering 
-threshold <- log2(5*2.7)
+threshold <- log2(5)
 keep <- rowSums(dge.obj.cpm > threshold) # filter for log cpm > 3.3
 keep <- keep >=10  # filter for gene expressed in at least 10 samples for one condition
 dge.obj.filtered <- dge.obj[keep, , keep.lib.sizes=FALSE] # keep.lib.sizes recalculates the library size. 
@@ -168,12 +168,12 @@ head(dge.obj.filtered$samples)
 ```
 
     ##           group lib.size norm.factors
-    ## SRX033480     1  2978971            1
-    ## SRX033488     1  6177462            1
-    ## SRX033481     1  2661232            1
-    ## SRX033489     1  6411180            1
-    ## SRX033482     1  2955195            1
-    ## SRX033490     1  6949190            1
+    ## SRX033480     1  3021004            1
+    ## SRX033488     1  6263291            1
+    ## SRX033481     1  2699425            1
+    ## SRX033489     1  6503145            1
+    ## SRX033482     1  2996943            1
+    ## SRX033490     1  7049580            1
 
 We can see that the lib.size are smaller compare to those in `dge.obj` after we dropped out some genes.
 
@@ -187,9 +187,9 @@ dim(dge.obj); dim(dge.obj.filtered);
 
     ## [1] 36536    21
 
-    ## [1] 5598   21
+    ## [1] 7262   21
 
-We have 5598 genes left.
+We have 7262 genes left.
 
 ### Normalization
 
@@ -203,12 +203,12 @@ head(dge.obj.filtered.norm$sample)
 ```
 
     ##           group lib.size norm.factors
-    ## SRX033480     1  2978971    0.9875932
-    ## SRX033488     1  6177462    0.9939317
-    ## SRX033481     1  2661232    0.9909975
-    ## SRX033489     1  6411180    1.0067678
-    ## SRX033482     1  2955195    0.9828178
-    ## SRX033490     1  6949190    0.9901124
+    ## SRX033480     1  3021004    0.9870231
+    ## SRX033488     1  6263291    0.9848896
+    ## SRX033481     1  2699425    0.9899273
+    ## SRX033489     1  6503145    1.0091171
+    ## SRX033482     1  2996943    0.9744694
+    ## SRX033490     1  7049580    0.9901168
 
 Now the norm factors are no longer 1 like in `dge.obj.filtered`. norm.factors &lt; 1 tell us that there are a small number of genes that make up a substantial proportion of counts. In this case, the library size will be scaled down so to scale the counts of the other genes upward.
 
@@ -276,12 +276,12 @@ head(DEGenes$table)
 ```
 
     ##                        logFC   logCPM       LR       PValue          FDR
-    ## ENSMUSG00000015484 -1.998512 4.340754 369.8932 1.974437e-82 1.105290e-78
-    ## ENSMUSG00000030532  1.520040 5.597944 328.2738 2.284383e-73 6.393989e-70
-    ## ENSMUSG00000024248 -3.180704 3.500834 305.0016 2.679972e-68 5.000827e-65
-    ## ENSMUSG00000023236  1.400762 7.092576 282.3746 2.281013e-63 3.192278e-60
-    ## ENSMUSG00000072572 -2.036295 3.739185 216.7730 4.573907e-49 5.120946e-46
-    ## ENSMUSG00000028393  1.775881 6.135877 206.3210 8.720740e-47 8.136451e-44
+    ## ENSMUSG00000020912 -5.214229 3.162833 412.5167 1.038245e-91 7.539732e-88
+    ## ENSMUSG00000015484 -1.994976 4.319520 350.9598 2.619011e-78 9.509629e-75
+    ## ENSMUSG00000050141 -5.387814 2.323630 324.8811 1.252295e-72 3.031389e-69
+    ## ENSMUSG00000030532  1.522248 5.577071 312.2159 7.186321e-70 1.304677e-66
+    ## ENSMUSG00000035775 -4.568919 2.678574 310.2938 1.884627e-69 2.737232e-66
+    ## ENSMUSG00000024248 -3.177268 3.479274 290.8811 3.195802e-65 3.867986e-62
 
 ``` r
 lattice::histogram(DEGenes$table$PValue) 
@@ -299,7 +299,7 @@ The p values for the first few are crazy small. Let's see how many have p value 
 sum(DEGenes$table$PValue <= 0.001 )
 ```
 
-    ## [1] 419
+    ## [1] 556
 
 ### Gene ontology and pathway analysis
 
@@ -466,7 +466,7 @@ deseq2.genes.names <- rownames(top_deseq2)
 length(edgeR.genes.names); length(deseq2.genes.names); 
 ```
 
-    ## [1] 419
+    ## [1] 556
 
     ## [1] 833
 
@@ -474,7 +474,7 @@ length(edgeR.genes.names); length(deseq2.genes.names);
 length(intersect(edgeR.genes.names, deseq2.genes.names))
 ```
 
-    ## [1] 414
+    ## [1] 548
 
 We get more genes by doing DESEq2. There are many overlapping genes.
 

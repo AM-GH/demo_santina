@@ -77,7 +77,7 @@ dge.obj.cpm <- cpm(dge.obj, log=TRUE) # count per million. Not sure if I need to
 plotMDS(dge.obj.cpm,  col=c(rep("black",10), rep("red",11)) ) 
 
 # Filtering 
-threshold <- log2(5*2.7)
+threshold <- log2(5)
 keep <- rowSums(dge.obj.cpm > threshold) # filter for log cpm > 3.3
 keep <- keep >=10  # filter for gene expressed in at least 10 samples for one condition
 dge.obj.filtered <- dge.obj[keep, , keep.lib.sizes=FALSE] # keep.lib.sizes recalculates the library size. 
