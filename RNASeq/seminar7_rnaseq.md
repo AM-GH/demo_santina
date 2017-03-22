@@ -137,10 +137,10 @@ head(dge.obj$samples)
 What's the smallest lib.size?
 
 ``` r
-min(dge.obj$samples$lib.size)
+(min_lib_size_million <- min(dge.obj$samples$lib.size) / 1000000)
 ```
 
-    ## [1] 2717092
+    ## [1] 2.717092
 
 The smallest lib size is about 2.7 millions.
 
@@ -151,7 +151,7 @@ The smallest lib size is about 2.7 millions.
 According to the manual, we would drop off the genes that aren't present in at least one sample for any of the conditions and filter with CPM (count-per-million) instead of the rare counts so that we're taking the library sizes into account.
 
 ``` r
-dge.obj.cpm <- cpm(dge.obj, log=TRUE) # count per million. Not sure if I need to do log=TRUE to log transform (base 2) here. 
+dge.obj.cpm <- cpm(dge.obj) # count per million. Not sure if I need to do log=TRUE to log transform (base 2) here. 
 # sanity check using unsupervised clustering
 plotMDS(dge.obj.cpm,  col=c(rep("black",10), rep("red",11)) ) 
 ```
@@ -160,24 +160,24 @@ plotMDS(dge.obj.cpm,  col=c(rep("black",10), rep("red",11)) )
 
 ``` r
 # Filtering 
-threshold <- log2(5)
-keep <- rowSums(dge.obj.cpm > threshold) # filter for log cpm > 3.3
+
+# Manual said "a gene is required to have a count of 5-10" in a library to be considered expressed in that library".
+threshold <- 5/min_lib_size_million # cpm of 2 is equivalent to ~5-6 count in the smallest library
+keep <- rowSums(dge.obj.cpm > threshold) 
 keep <- keep >=10  # filter for gene expressed in at least 10 samples for one condition
 dge.obj.filtered <- dge.obj[keep, , keep.lib.sizes=FALSE] # keep.lib.sizes recalculates the library size. 
 head(dge.obj.filtered$samples)
 ```
 
     ##           group lib.size norm.factors
-    ## SRX033480     1  3021004            1
-    ## SRX033488     1  6263291            1
-    ## SRX033481     1  2699425            1
-    ## SRX033489     1  6503145            1
-    ## SRX033482     1  2996943            1
-    ## SRX033490     1  7049580            1
+    ## SRX033480     1  3034127            1
+    ## SRX033488     1  6290532            1
+    ## SRX033481     1  2711332            1
+    ## SRX033489     1  6532326            1
+    ## SRX033482     1  3009697            1
+    ## SRX033490     1  7081581            1
 
 We can see that the lib.size are smaller compare to those in `dge.obj` after we dropped out some genes.
-
-Manual said "a gene is required to have a count of 5-10" in a library to be considered expressed in that library, so that's why I filter it by log2(5\*2.7); our smallest library size is 2.7 million.
 
 Let's see how many genes we have left.
 
@@ -187,9 +187,9 @@ dim(dge.obj); dim(dge.obj.filtered);
 
     ## [1] 36536    21
 
-    ## [1] 7262   21
+    ## [1] 8655   21
 
-We have 7262 genes left.
+We have 8655 genes left.
 
 ### Normalization
 
@@ -203,12 +203,12 @@ head(dge.obj.filtered.norm$sample)
 ```
 
     ##           group lib.size norm.factors
-    ## SRX033480     1  3021004    0.9870231
-    ## SRX033488     1  6263291    0.9848896
-    ## SRX033481     1  2699425    0.9899273
-    ## SRX033489     1  6503145    1.0091171
-    ## SRX033482     1  2996943    0.9744694
-    ## SRX033490     1  7049580    0.9901168
+    ## SRX033480     1  3034127    0.9799779
+    ## SRX033488     1  6290532    0.9861372
+    ## SRX033481     1  2711332    0.9881436
+    ## SRX033489     1  6532326    1.0024760
+    ## SRX033482     1  3009697    0.9762673
+    ## SRX033490     1  7081581    0.9902589
 
 Now the norm factors are no longer 1 like in `dge.obj.filtered`. norm.factors &lt; 1 tell us that there are a small number of genes that make up a substantial proportion of counts. In this case, the library size will be scaled down so to scale the counts of the other genes upward.
 
@@ -276,12 +276,12 @@ head(DEGenes$table)
 ```
 
     ##                        logFC   logCPM       LR       PValue          FDR
-    ## ENSMUSG00000020912 -5.214229 3.162833 412.5167 1.038245e-91 7.539732e-88
-    ## ENSMUSG00000015484 -1.994976 4.319520 350.9598 2.619011e-78 9.509629e-75
-    ## ENSMUSG00000050141 -5.387814 2.323630 324.8811 1.252295e-72 3.031389e-69
-    ## ENSMUSG00000030532  1.522248 5.577071 312.2159 7.186321e-70 1.304677e-66
-    ## ENSMUSG00000035775 -4.568919 2.678574 310.2938 1.884627e-69 2.737232e-66
-    ## ENSMUSG00000024248 -3.177268 3.479274 290.8811 3.195802e-65 3.867986e-62
+    ## ENSMUSG00000020912 -5.216276 3.158415 411.3119 1.899194e-91 1.643752e-87
+    ## ENSMUSG00000015484 -1.997495 4.314050 342.4881 1.832370e-76 7.929581e-73
+    ## ENSMUSG00000050141 -5.392143 2.319460 315.9460 1.106564e-70 3.192437e-67
+    ## ENSMUSG00000035775 -4.572107 2.674424 303.3321 6.192166e-68 1.339830e-64
+    ## ENSMUSG00000030532  1.519004 5.569878 295.2067 3.648420e-66 6.315415e-63
+    ## ENSMUSG00000024248 -3.180181 3.473316 293.2028 9.970094e-66 1.438186e-62
 
 ``` r
 lattice::histogram(DEGenes$table$PValue) 
@@ -299,7 +299,7 @@ The p values for the first few are crazy small. Let's see how many have p value 
 sum(DEGenes$table$PValue <= 0.001 )
 ```
 
-    ## [1] 556
+    ## [1] 661
 
 ### Gene ontology and pathway analysis
 
@@ -466,7 +466,7 @@ deseq2.genes.names <- rownames(top_deseq2)
 length(edgeR.genes.names); length(deseq2.genes.names); 
 ```
 
-    ## [1] 556
+    ## [1] 661
 
     ## [1] 833
 
@@ -474,7 +474,7 @@ length(edgeR.genes.names); length(deseq2.genes.names);
 length(intersect(edgeR.genes.names, deseq2.genes.names))
 ```
 
-    ## [1] 548
+    ## [1] 640
 
 We get more genes by doing DESEq2. There are many overlapping genes.
 

@@ -60,7 +60,7 @@ head(dge.obj$samples)
 
 What's the smallest lib.size? 
 ```{r}
-min(dge.obj$samples$lib.size)
+(min_lib_size_million <- min(dge.obj$samples$lib.size) / 1000000)
 ```
 
 The smallest lib size is about 2.7 millions. 
@@ -72,20 +72,20 @@ The smallest lib size is about 2.7 millions.
 According to the manual, we would drop off the genes that aren't present in at least one sample for any of the conditions and filter with CPM (count-per-million) instead of the rare counts so that we're taking the library sizes into account. 
 
 ```{r}
-dge.obj.cpm <- cpm(dge.obj, log=TRUE) # count per million. Not sure if I need to do log=TRUE to log transform (base 2) here. 
+dge.obj.cpm <- cpm(dge.obj) # count per million. Not sure if I need to do log=TRUE to log transform (base 2) here. 
 # sanity check using unsupervised clustering
 plotMDS(dge.obj.cpm,  col=c(rep("black",10), rep("red",11)) ) 
 
 # Filtering 
-threshold <- log2(5)
-keep <- rowSums(dge.obj.cpm > threshold) # filter for log cpm > 3.3
+
+# Manual said "a gene is required to have a count of 5-10" in a library to be considered expressed in that library".
+threshold <- 5/min_lib_size_million # cpm of 2 is equivalent to ~5-6 count in the smallest library
+keep <- rowSums(dge.obj.cpm > threshold) 
 keep <- keep >=10  # filter for gene expressed in at least 10 samples for one condition
 dge.obj.filtered <- dge.obj[keep, , keep.lib.sizes=FALSE] # keep.lib.sizes recalculates the library size. 
 head(dge.obj.filtered$samples)
 ```
 We can see that the lib.size are smaller compare to those in `dge.obj` after we dropped out some genes. 
-
-Manual said "a gene is required to have a count of 5-10" in a library to be considered expressed in that library, so that's why I filter it by log2(5*2.7); our smallest library size is 2.7 million.
 
 Let's see how many genes we have left. 
 ```{r}
