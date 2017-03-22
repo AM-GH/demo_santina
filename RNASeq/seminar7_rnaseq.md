@@ -161,7 +161,7 @@ plotMDS(dge.obj.cpm,  col=c(rep("black",10), rep("red",11)) )
 ``` r
 # Filtering 
 
-# Manual said "a gene is required to have a count of 5-10" in a library to be considered expressed in that library".
+# Manual said "a gene is required to have a count of 5-10" in a library to be considered expressed in that library". p.12
 threshold <- 5/min_lib_size_million # cpm of 2 is equivalent to ~5-6 count in the smallest library
 keep <- rowSums(dge.obj.cpm > threshold) 
 keep <- keep >=10  # filter for gene expressed in at least 10 samples for one condition
